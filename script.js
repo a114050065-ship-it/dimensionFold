@@ -98,3 +98,110 @@ function terminalReply(input) {
   }
 
   if (normalized.includes("折疊") || normalized.includes("維度")) {
+    return "折疊深度已接近 0.92。警告：空間不是容器，而是有回聲的結構。";
+  }
+
+  if (normalized.includes("啟動") || normalized.includes("支持")) {
+    return "你的選擇已記錄。宣傳系統將把觀眾立場轉化為社群投票題：你會為了拯救文明啟動引擎嗎？";
+  }
+
+  return `已接收：「${input}」。玄井建議將這句話轉化為觀眾互動貼文，測試科技倫理與災難選擇的討論熱度。`;
+}
+
+function appendTerminalLine(speaker, text) {
+  const log = document.querySelector("#terminal-log");
+  const line = document.createElement("p");
+  line.innerHTML = `<span>${speaker}</span>${text}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+function initInteractions() {
+  document.querySelector("#text-interface").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.querySelector("#audience-text");
+    const value = input.value.trim();
+
+    appendTerminalLine("觀眾", value || " ");
+    appendTerminalLine("玄井", terminalReply(value));
+    input.value = "";
+  });
+}
+
+function initCanvas() {
+  const canvas = document.querySelector("#fold-canvas");
+  const context = canvas.getContext("2d");
+  const pointer = { x: 0.5, y: 0.5 };
+  let width = 0;
+  let height = 0;
+  let foldLines = [];
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    foldLines = Array.from({ length: 18 }, (_, index) => ({
+      offset: (index / 17) * width,
+      speed: 0.18 + (index % 5) * 0.045,
+      tilt: -0.45 + (index % 7) * 0.12,
+      phase: index * 0.7,
+    }));
+  }
+
+  function draw(time) {
+    context.clearRect(0, 0, width, height);
+    context.lineWidth = 1;
+
+    foldLines.forEach((line, index) => {
+      const drift = Math.sin(time * 0.0004 + line.phase) * 38;
+      const influence = (pointer.x - 0.5) * 70;
+      const startX = ((line.offset + drift + influence + time * line.speed * 0.02) % (width + 220)) - 110;
+      const gradient = context.createLinearGradient(startX, 0, startX + 220, height);
+      gradient.addColorStop(0, "rgba(89,216,255,0)");
+      gradient.addColorStop(0.48, index % 3 === 0 ? "rgba(124,255,200,0.34)" : "rgba(89,216,255,0.25)");
+      gradient.addColorStop(1, "rgba(89,216,255,0)");
+
+      context.strokeStyle = gradient;
+      context.beginPath();
+      context.moveTo(startX, 0);
+      context.lineTo(startX + height * line.tilt + 120, height);
+      context.stroke();
+    });
+
+    const centerX = width * (0.68 + (pointer.x - 0.5) * 0.06);
+    const centerY = height * (0.38 + (pointer.y - 0.5) * 0.06);
+    context.strokeStyle = "rgba(183,244,255,0.18)";
+    context.lineWidth = 1;
+
+    for (let size = 70; size < 420; size += 58) {
+      const pulse = Math.sin(time * 0.001 + size) * 8;
+      context.save();
+      context.translate(centerX, centerY);
+      context.rotate(time * 0.00008 + size * 0.002);
+      context.strokeRect((-size - pulse) / 2, (-size - pulse) / 2, size + pulse, size + pulse);
+      context.restore();
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("pointermove", (event) => {
+    pointer.x = event.clientX / Math.max(width, 1);
+    pointer.y = event.clientY / Math.max(height, 1);
+  });
+
+  resize();
+  requestAnimationFrame(draw);
+}
+
+updateFunding();
+renderBudget();
+initInteractions();
+initCanvas();
